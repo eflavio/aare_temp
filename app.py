@@ -13,6 +13,7 @@ def load_plot():
 
 
 app = dash.Dash(__name__)
+server = app.server
 
 app.layout = html.Div(
     [
@@ -29,9 +30,5 @@ def update_plot(n):
     return load_plot()
 
 
-def run():
-    app.run(debug=True)
-
-
 if __name__ == "__main__":
-    run()
+    app.run(debug=True)
