@@ -1,0 +1,10 @@
+[project]
+name = "aare-temp"
+version = "0.1.0"
+description = "Aare temperature and flow monitoring dashboard"
+requires-python = ">=3.12"
+dependencies = [
+    "dash",
+    "gunicorn",
+    "requests",
+]
