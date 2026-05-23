@@ -11,8 +11,7 @@ def build_combined_plot(aare_data, reuss_data, aare_label, reuss_label, title_te
     """Merge two river datasets into a single combined Plotly figure."""
     combined = {"data": [], "layout": {"title": {"text": title_text}}}
 
-    # Merge xaxis/yaxis configs from both sources so spike lines etc. work.
-    # Use aare as primary, fill missing keys from reuss.
+    # Merge xaxis configs from both sources so spike lines etc. work.
     aare_layout = aare_data.get("layout", {})
     reuss_layout = reuss_data.get("layout", {})
 
@@ -20,9 +19,25 @@ def build_combined_plot(aare_data, reuss_data, aare_label, reuss_label, title_te
     reuss_x = reuss_layout.get("xaxis", {})
     combined["layout"]["xaxis"] = {**reuss_x, **aare_x}
 
+    # Collect all y-values to compute a proper shared range
+    all_y = []
+    for data in [aare_data, reuss_data]:
+        for series in data.get("data", []):
+            if "y" in series:
+                all_y.extend(series["y"])
+
+    # Merge xaxis/yaxis configs from both sources
     aare_y = aare_layout.get("yaxis", {})
     reuss_y = reuss_layout.get("yaxis", {})
     combined["layout"]["yaxis"] = {**reuss_y, **aare_y}
+
+    # Override range to fit ALL data so neither river is squashed
+    if all_y:
+        y_min = min(all_y)
+        y_max = max(all_y)
+        y_range = y_max - y_min
+        padding = y_range * 0.1 if y_range else 1
+        combined["layout"]["yaxis"]["range"] = [y_min - padding, y_max + padding]
 
     for label, data in [(aare_label, aare_data), (reuss_label, reuss_data)]:
         for series in data.get("data", []):

@@ -6,30 +6,7 @@ from dash import dcc, html
 # ─── Water wave SVG animation ───────────────────────────────────────────────
 def wave_svg(color1="rgba(59,130,246,0.5)", color2="rgba(14,165,233,0.4)"):
     """Inline SVG with CSS keyframe animation for a subtle wave."""
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 120" preserveAspectRatio="none"
-        style="position:fixed;bottom:0;left:0;width:100%;height:80px;pointer-events:none;">
-        <defs>
-            <linearGradient id="wg" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="{color1}" />
-                <stop offset="100%" stop-color="{color2}" />
-            </linearGradient>
-        </defs>
-        <path fill="url(#wg)" d="M0,64 C360,120 720,0 1080,64 C1260,96 1380,80 1440,64 L1440,120 L0,120 Z">
-            <animate attributeName="d"
-                values="M0,64 C360,120 720,0 1080,64 C1260,96 1380,80 1440,64 L1440,120 L0,120 Z;
-                        M0,80 C320,32 640,112 960,48 C1200,8 1380,72 1440,80 L1440,120 L0,120 Z;
-                        M0,64 C360,120 720,0 1080,64 C1260,96 1380,80 1440,64 L1440,120 L0,120 Z"
-                dur="8s" repeatCount="indefinite"/>
-        </path>
-        <path fill="url(#wg)" opacity="0.5"
-            d="M0,80 C240,32 480,112 720,64 C960,16 1200,96 1440,48 L1440,120 L0,120 Z">
-            <animate attributeName="d"
-                values="M0,80 C240,32 480,112 720,64 C960,16 1200,96 1440,48 L1440,120 L0,120 Z;
-                        M0,48 C360,96 720,16 1080,80 C1260,112 1380,32 1440,48 L1440,120 L0,120 Z;
-                        M0,80 C240,32 480,112 720,64 C960,16 1200,96 1440,48 L1440,120 L0,120 Z"
-                dur="6s" repeatCount="indefinite"/>
-        </path>
-    </svg>"""
+    return f"""<div style="position:fixed;bottom:0;left:0;width:100%;height:120px;background:linear-gradient(180deg,{color1},{color2});z-index:-1;pointer-events:none;"></div>"""
 
 
 # ─── Dash HTML template ─────────────────────────────────────────────────────
