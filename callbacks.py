@@ -84,7 +84,17 @@ def update_plots(n):
         apply_dark_theme(plot, title)
 
     # Format latest measurement values for display
-    current_time = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+    # Use the most recent data timestamp as "last updated" (Swiss time)
+    all_times = [
+        aare_temp_latest.get("time"),
+        aare_flow_latest.get("flow", {}).get("time"),
+        aare_flow_latest.get("level", {}).get("time"),
+        reuss_temp_latest.get("time"),
+        reuss_flow_latest.get("flow", {}).get("time"),
+        reuss_flow_latest.get("level", {}).get("time"),
+    ]
+    latest_data_time = max(t for t in all_times if t)
+    current_time = fmt_time(latest_data_time)
 
     # Temperature values
     aare_temp_display = (
