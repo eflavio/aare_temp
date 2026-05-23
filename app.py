@@ -109,6 +109,11 @@ def build_combined_plot(aare_data, reuss_data, aare_label, reuss_label, title_te
         "Reuss": "#06b6d4",
     }
 
+    # Copy xaxis/yaxis config from source so spike lines etc. work
+    source = aare_data.get("layout", {})
+    combined["layout"]["xaxis"] = dict(source.get("xaxis", {}))
+    combined["layout"]["yaxis"] = dict(source.get("yaxis", {}))
+
     for label, data in [(aare_label, aare_data), (reuss_label, reuss_data)]:
         for series in data.get("data", []):
             if "x" not in series or "y" not in series:
@@ -164,7 +169,7 @@ def apply_dark_theme(plot, title_text):
             "gridcolor": "rgba(148,163,184,0.1)",
             "zerolinecolor": "rgba(148,163,184,0.15)",
             "tickfont": {"size": 11, "color": "#64748b"},
-            "tickformat": "%d.%m",
+            "tickformat": "%d.%m.%Y %H:%M",
             "spikemode": "across",
             "spikesnap": "data",
             "spikedash": "dot",
@@ -399,23 +404,24 @@ app.index_string = """<!DOCTYPE html>
 
         /* River label */
         .river-label {
-            font-size: 1rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 10px;
+            margin-bottom: 0;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            justify-content: center;
         }
         .river-label .river-icon {
-            font-size: 1.15rem;
+            font-size: 1rem;
         }
 
         /* Measurement grid */
         .measurement-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
+            grid-template-columns: 1fr;
+            gap: 0;
             margin-bottom: 16px;
         }
         /* ── Mobile responsive ─────────────────────────────────────────────── */
@@ -584,19 +590,26 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     [
-                        # ── Aare card ─────────────────────────────
+                        # ── Single combined card ─────────────────────
                         html.Div(
                             [
+                                # River labels row
                                 html.Div(
                                     [
-                                        html.Span(className="river-icon", children="🏔️"),
-                                        "Aare",
+                                        html.Div(className="river-label", children=[
+                                            html.Span(className="river-icon", children="🏔️"),
+                                            "Aare",
+                                        ]),
+                                        html.Div(className="river-label", children=[
+                                            html.Span(className="river-icon", children="🏞️"),
+                                            "Reuss",
+                                        ]),
                                     ],
-                                    className="river-label",
+                                    style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginBottom": "12px"},
                                 ),
+                                # Row 1: Temperature
                                 html.Div(
                                     [
-                                        # Temperature
                                         html.Div(
                                             [
                                                 html.P("🌡️ Temperatur", className="card-title"),
@@ -605,43 +618,6 @@ app.layout = html.Div(
                                             ],
                                             className="measurement-card temp",
                                         ),
-                                        # Flow
-                                        html.Div(
-                                            [
-                                                html.P("🌊 Abfluss", className="card-title"),
-                                                html.Div(id="aare-flow-value", className="card-value"),
-                                                html.Div(id="aare-flow-time", className="card-time"),
-                                            ],
-                                            className="measurement-card flow",
-                                        ),
-                                        # Water level
-                                        html.Div(
-                                            [
-                                                html.P("📏 Wasserstand", className="card-title"),
-                                                html.Div(id="aare-level-value", className="card-value"),
-                                                html.Div(id="aare-level-time", className="card-time"),
-                                            ],
-                                            className="measurement-card level",
-                                        ),
-                                    ],
-                                    style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "12px"},
-                                ),
-                            ],
-                            className="glass-card",
-                        ),
-                        # ── Reuss card ─────────────────────────────
-                        html.Div(
-                            [
-                                html.Div(
-                                    [
-                                        html.Span(className="river-icon", children="🏞️"),
-                                        "Reuss",
-                                    ],
-                                    className="river-label",
-                                ),
-                                html.Div(
-                                    [
-                                        # Temperature
                                         html.Div(
                                             [
                                                 html.P("🌡️ Temperatur", className="card-title"),
@@ -650,7 +626,20 @@ app.layout = html.Div(
                                             ],
                                             className="measurement-card temp",
                                         ),
-                                        # Flow
+                                    ],
+                                    style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginBottom": "10px"},
+                                ),
+                                # Row 2: Flow
+                                html.Div(
+                                    [
+                                        html.Div(
+                                            [
+                                                html.P("🌊 Abfluss", className="card-title"),
+                                                html.Div(id="aare-flow-value", className="card-value"),
+                                                html.Div(id="aare-flow-time", className="card-time"),
+                                            ],
+                                            className="measurement-card flow",
+                                        ),
                                         html.Div(
                                             [
                                                 html.P("🌊 Abfluss", className="card-title"),
@@ -659,7 +648,20 @@ app.layout = html.Div(
                                             ],
                                             className="measurement-card flow",
                                         ),
-                                        # Water level
+                                    ],
+                                    style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginBottom": "10px"},
+                                ),
+                                # Row 3: Water level
+                                html.Div(
+                                    [
+                                        html.Div(
+                                            [
+                                                html.P("📏 Wasserstand", className="card-title"),
+                                                html.Div(id="aare-level-value", className="card-value"),
+                                                html.Div(id="aare-level-time", className="card-time"),
+                                            ],
+                                            className="measurement-card level",
+                                        ),
                                         html.Div(
                                             [
                                                 html.P("📏 Wasserstand", className="card-title"),
@@ -669,7 +671,7 @@ app.layout = html.Div(
                                             className="measurement-card level",
                                         ),
                                     ],
-                                    style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "12px"},
+                                    style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"},
                                 ),
                             ],
                             className="glass-card",
