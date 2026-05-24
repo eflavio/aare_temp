@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-aare-temp = "aare_temp:main.main"
+aare-temp = "aare_temp.main:main"
 
 [build-system]
 requires = ["uv_build>=0.9.10,<0.10.0"]
@@ -18,6 +18,3 @@ build-backend = "uv_build"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-aare_temp = ["assets/**"]
