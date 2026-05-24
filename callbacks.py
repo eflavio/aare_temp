@@ -5,7 +5,7 @@ import datetime
 from dash import callback, Output, Input
 
 from data import load_plot_data
-from plots import build_single_plot, build_combined_plot
+from plots import build_single_plot, build_combined_plot, build_filtered_single_plot, build_filtered_combined_plot
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -55,10 +55,13 @@ def _latest_values(raw_data, plot_type):
         # Graphs
         Output("combined-temp-graph", "figure"),
         Output("combined-flow-graph", "figure"),
+        Output("combined-level-graph", "figure"),
         Output("aare-temp-graph", "figure"),
         Output("aare-flow-graph", "figure"),
+        Output("aare-level-graph", "figure"),
         Output("reuss-temp-graph", "figure"),
         Output("reuss-flow-graph", "figure"),
+        Output("reuss-level-graph", "figure"),
         # Latest values
         Output("aare-temp-value", "children"),
         Output("aare-flow-value", "children"),
@@ -86,14 +89,17 @@ def update_plots(_):
     reuss_flow_raw = load_plot_data("2152", "flow")
 
     # Individual plots
-    aare_temp_fig = build_single_plot(aare_temp_raw, "Aare")
-    reuss_temp_fig = build_single_plot(reuss_temp_raw, "Reuss")
-    aare_flow_fig = build_single_plot(aare_flow_raw, "Aare")
-    reuss_flow_fig = build_single_plot(reuss_flow_raw, "Reuss")
+    aare_temp_fig = build_single_plot(aare_temp_raw, "Aare", "°C")
+    reuss_temp_fig = build_single_plot(reuss_temp_raw, "Reuss", "°C")
+    aare_flow_fig = build_filtered_single_plot(aare_flow_raw, "Aare", "Abfluss", "m³/s")
+    reuss_flow_fig = build_filtered_single_plot(reuss_flow_raw, "Reuss", "Abfluss", "m³/s")
+    aare_level_fig = build_filtered_single_plot(aare_flow_raw, "Aare", "Wasserstand", "m")
+    reuss_level_fig = build_filtered_single_plot(reuss_flow_raw, "Reuss", "Wasserstand", "m")
 
     # Combined comparison
-    combined_temp = build_combined_plot(aare_temp_raw, reuss_temp_raw)
-    combined_flow = build_combined_plot(aare_flow_raw, reuss_flow_raw)
+    combined_temp = build_combined_plot(aare_temp_raw, reuss_temp_raw, "°C")
+    combined_flow = build_filtered_combined_plot(aare_flow_raw, reuss_flow_raw, "Abfluss", "m³/s")
+    combined_level = build_filtered_combined_plot(aare_flow_raw, reuss_flow_raw, "Wasserstand", "m")
 
     # ── Extract latest values ───────────────────────────────────
     aare_temp_val = _latest_values(aare_temp_raw, "temperature")
@@ -123,8 +129,8 @@ def update_plots(_):
     # ── Return everything ───────────────────────────────────────
     return (
         # Graphs
-        combined_temp, combined_flow,
-        aare_temp_fig, aare_flow_fig, reuss_temp_fig, reuss_flow_fig,
+        combined_temp, combined_flow, combined_level,
+        aare_temp_fig, aare_flow_fig, aare_level_fig, reuss_temp_fig, reuss_flow_fig, reuss_level_fig,
         # Values
         _val_str(aare_temp_val),
         _val_str(aare_flow_val.get("flow") if aare_flow_val else None),

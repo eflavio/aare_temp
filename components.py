@@ -137,8 +137,12 @@ def build_layout():
                                 "combined-temp-graph",
                             ),
                             graph_card(
-                                "Abfluss & Wasserstand im Vergleich (7 Tage)", "🌊",
+                                "Abfluss im Vergleich (7 Tage)", "🌊",
                                 "combined-flow-graph",
+                            ),
+                            graph_card(
+                                "Wasserstand im Vergleich (7 Tage)", "📏",
+                                "combined-level-graph",
                             ),
                         ],
                         className="graph-section",
@@ -154,7 +158,8 @@ def build_layout():
                     html.Div(
                         [
                             graph_card("Temperatur (7 Tage)", "🌡️", "aare-temp-graph"),
-                            graph_card("Abfluss & Wasserstand (7 Tage)", "🌊", "aare-flow-graph"),
+                            graph_card("Abfluss (7 Tage)", "🌊", "aare-flow-graph"),
+                            graph_card("Wasserstand (7 Tage)", "📏", "aare-level-graph"),
                         ],
                         className="graph-section",
                     ),
@@ -169,7 +174,8 @@ def build_layout():
                     html.Div(
                         [
                             graph_card("Temperatur (7 Tage)", "🌡️", "reuss-temp-graph"),
-                            graph_card("Abfluss & Wasserstand (7 Tage)", "🌊", "reuss-flow-graph"),
+                            graph_card("Abfluss (7 Tage)", "🌊", "reuss-flow-graph"),
+                            graph_card("Wasserstand (7 Tage)", "📏", "reuss-level-graph"),
                         ],
                         className="graph-section",
                     ),

@@ -19,15 +19,49 @@ def make_trace(data, label):
     )
 
 
-def build_single_plot(data, label):
+def build_single_plot(data, label, unit=None):
     """Build a Plotly figure from raw plot data."""
     traces = [make_trace(d, label) for d in data.get("data", [])]
     fig = go.Figure(data=traces)
+    if unit:
+        fig.update_yaxes(title_text=unit)
     _apply_theme(fig)
     return fig
 
 
-def build_combined_plot(data_aare, data_reuss):
+def build_filtered_single_plot(data, label, name_pattern, unit=None):
+    """Build a Plotly figure, keeping only series whose name contains name_pattern."""
+    traces = [make_trace(d, label) for d in data.get("data", []) if name_pattern in d.get("name", "")]
+    fig = go.Figure(data=traces)
+    if unit:
+        fig.update_yaxes(title_text=unit)
+    _apply_theme(fig)
+    return fig
+
+
+def build_filtered_combined_plot(data_aare, data_reuss, name_pattern, unit=None):
+    """Merge two river datasets into a single figure, filtering by name_pattern."""
+    traces = []
+    for data, label in [(data_aare, "Aare"), (data_reuss, "Reuss")]:
+        traces.extend(make_trace(d, label) for d in data.get("data", []) if name_pattern in d.get("name", ""))
+
+    fig = go.Figure(data=traces)
+
+    # Shared y-range so neither river is squashed
+    all_y = [v for d in [data_aare, data_reuss] for t in d.get("data", []) for v in t.get("y", []) if name_pattern in t.get("name", "")]
+    if all_y:
+        y_min, y_max = min(all_y), max(all_y)
+        span = y_max - y_min
+        yaxis_kw = {"range": [y_min - span * 0.1, y_max + span * 0.1]}
+        if unit:
+            yaxis_kw["title_text"] = unit
+        fig.update_yaxes(**yaxis_kw)
+
+    _apply_theme(fig)
+    return fig
+
+
+def build_combined_plot(data_aare, data_reuss, unit=None):
     """Merge two river datasets into a single figure."""
     traces = []
     for data, label in [(data_aare, "Aare"), (data_reuss, "Reuss")]:
@@ -40,7 +74,10 @@ def build_combined_plot(data_aare, data_reuss):
     if all_y:
         y_min, y_max = min(all_y), max(all_y)
         span = y_max - y_min
-        fig.update_yaxes(range=[y_min - span * 0.1, y_max + span * 0.1])
+        yaxis_kw = {"range": [y_min - span * 0.1, y_max + span * 0.1]}
+        if unit:
+            yaxis_kw["title_text"] = unit
+        fig.update_yaxes(**yaxis_kw)
 
     _apply_theme(fig)
     return fig
