@@ -1,311 +1,190 @@
-"""UI components: wave SVG, CSS, and the app layout."""
+"""Reusable UI component builders."""
 
 from dash import dcc, html
 
+# ── Measurement card ──────────────────────────────────────────────────────
 
-# ─── Water wave SVG animation ───────────────────────────────────────────────
-def wave_svg(color1="rgba(59,130,246,0.5)", color2="rgba(14,165,233,0.4)"):
-    """Inline SVG with CSS keyframe animation for a subtle wave."""
-    return f"""<div style="position:fixed;bottom:0;left:0;width:100%;height:120px;background:linear-gradient(180deg,{color1},{color2});z-index:-1;pointer-events:none;"></div>"""
-
-
-# ─── Dash HTML template ─────────────────────────────────────────────────────
-APP_INDEX_TEMPLATE = """<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    __DASH_METAS__
-    <title>__DASH_TITLE__</title>
-    __DASH_FAVICON__
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    {%css%}
-</head>
-<body>
-    <div style="position: relative;">
-        <!-- Animated wave background -->
-        __DASH_WAVE_SVG__
-        {%app_entry%}
-        {%config%}
-        {%scripts%}
-        {%renderer%}
-    </div>
-</body>
-</html>"""
+_METRICS = [
+    ("Temperature", "temp", "🌡️", "temp-value", "temp-time"),
+    ("Flow", "flow", "🌊", "flow-value", "flow-time"),
+    ("Water Level", "level", "📏", "level-value", "level-time"),
+]
 
 
-# ─── Layout helper ──────────────────────────────────────────────────────────
-def build_layout():
-    """Build the complete Dash app layout."""
+def _make_metric_card(title, icon, metric_key, value_id, time_id):
+    """Build a single metric card."""
     return html.Div(
         [
-            # ─── Header ─────────────────────────────────────────────────────
+            html.P(f"{icon} {title}", className="card-title"),
+            html.Div(id=value_id, className="card-value"),
+            html.Div(id=time_id, className="card-time"),
+        ],
+        className=f"measurement-card {metric_key}",
+    )
+
+
+def measurement_card(prefix):
+    """Build all metric cards for one river (e.g. 'aare' or 'reuss')."""
+    rows = []
+    for title, cls, icon, value_id, time_id in _METRICS:
+        rows.append(_make_metric_card(
+            title, icon, cls,
+            f"{prefix}-{value_id}",
+            f"{prefix}-{time_id}",
+        ))
+    return html.Div(
+        [html.Div(row, style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"})
+         for row in rows],
+        className="cards-row",
+    )
+
+
+def measurement_header():
+    """River label header for the comparison card."""
+    return html.Div(
+        [
+            html.Div(
+                [html.Span(className="river-icon", children="🏔️"), "Aare"],
+                className="river-label",
+            ),
+            html.Div(
+                [html.Span(className="river-icon", children="🏞️"), "Reuss"],
+                className="river-label",
+            ),
+        ],
+        className="river-headers",
+    )
+
+
+def section_header(icon, title):
+    """Section header with icon."""
+    return html.Div(
+        [
+            html.Span(className="section-icon", children=icon),
+            html.H2(title),
+        ],
+        className="section-header",
+    )
+
+
+def graph_card(title, icon, graph_id, height="40vh"):
+    """A graph wrapped in a styled container."""
+    return html.Div(
+        [
+            html.Div(
+                className="graph-title",
+                children=[html.Span(className="icon", children=icon), title],
+            ),
+            dcc.Graph(
+                id=graph_id,
+                config={"displayModeBar": False, "responsive": True},
+                style={"height": height},
+            ),
+        ],
+        className="graph-container",
+    )
+
+
+def build_layout():
+    """Build the complete app layout."""
+    return html.Div(
+        [
+            # ── Header ────────────────────────────────────────────────
             html.Div(
                 [
                     html.H1("Fäbu's App", className="header-title"),
                     html.P(
-                        html.Span(className="live-dot"),
-                        " Live – Aare & Reuss Wasser-Monitoring",
+                        [html.Span(className="live-dot"),
+                         " Live – Aare & Reuss Wasser-Monitoring"],
                         className="subtitle",
                     ),
                 ],
                 className="header-container",
             ),
 
-            # ─── Latest measurements dashboard ──────────────────────────────
+            # ── Latest measurements ───────────────────────────────────
             html.Div(
                 [
+                    section_header("💧", "Aktuelle Messwerte"),
                     html.Div(
                         [
-                            html.Span(className="section-icon", children="💧"),
-                            html.H2("Aktuelle Messwerte"),
-                        ],
-                        className="section-header",
-                    ),
-                    html.Div(
-                        [
+                            measurement_header(),
                             html.Div(
                                 [
-                                    # River labels row
-                                    html.Div(
-                                        [
-                                            html.Div(className="river-label", children=[
-                                                html.Span(className="river-icon", children="🏔️"),
-                                                "Aare",
-                                            ]),
-                                            html.Div(className="river-label", children=[
-                                                html.Span(className="river-icon", children="🏞️"),
-                                                "Reuss",
-                                            ]),
-                                        ],
-                                        style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginBottom": "12px"},
-                                    ),
-                                    # Row 1: Temperature
-                                    html.Div(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.P("🌡️ Temperatur", className="card-title"),
-                                                    html.Div(id="aare-temp-value", className="card-value"),
-                                                    html.Div(id="aare-temp-time", className="card-time"),
-                                                ],
-                                                className="measurement-card temp",
-                                            ),
-                                            html.Div(
-                                                [
-                                                    html.P("🌡️ Temperatur", className="card-title"),
-                                                    html.Div(id="reuss-temp-value", className="card-value"),
-                                                    html.Div(id="reuss-temp-time", className="card-time"),
-                                                ],
-                                                className="measurement-card temp",
-                                            ),
-                                        ],
-                                        style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginBottom": "10px"},
-                                    ),
-                                    # Row 2: Flow
-                                    html.Div(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.P("🌊 Abfluss", className="card-title"),
-                                                    html.Div(id="aare-flow-value", className="card-value"),
-                                                    html.Div(id="aare-flow-time", className="card-time"),
-                                                ],
-                                                className="measurement-card flow",
-                                            ),
-                                            html.Div(
-                                                [
-                                                    html.P("🌊 Abfluss", className="card-title"),
-                                                    html.Div(id="reuss-flow-value", className="card-value"),
-                                                    html.Div(id="reuss-flow-time", className="card-time"),
-                                                ],
-                                                className="measurement-card flow",
-                                            ),
-                                        ],
-                                        style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px", "marginBottom": "10px"},
-                                    ),
-                                    # Row 3: Water level
-                                    html.Div(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.P("📏 Wasserstand", className="card-title"),
-                                                    html.Div(id="aare-level-value", className="card-value"),
-                                                    html.Div(id="aare-level-time", className="card-time"),
-                                                ],
-                                                className="measurement-card level",
-                                            ),
-                                            html.Div(
-                                                [
-                                                    html.P("📏 Wasserstand", className="card-title"),
-                                                    html.Div(id="reuss-level-value", className="card-value"),
-                                                    html.Div(id="reuss-level-time", className="card-time"),
-                                                ],
-                                                className="measurement-card level",
-                                            ),
-                                        ],
-                                        style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "8px"},
-                                    ),
+                                    measurement_card("aare"),
+                                    measurement_card("reuss"),
                                 ],
-                                className="glass-card",
+                                style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"},
+                                className="cards-row",
                             ),
                         ],
-                        className="measurement-grid",
+                        className="glass-card",
                     ),
-                    html.Div(id="last-updated", className="last-updated"),
                 ],
-                style={"padding": "0 20px"},
+                className="measurement-grid",
             ),
 
-            # ─── Combined plots ─────────────────────────────────────────────
+            html.Div(id="last-updated", className="last-updated"),
+
+            # ── Combined comparison ───────────────────────────────────
             html.Div(
                 [
+                    section_header("🔗", "Vergleich: Aare & Reuss"),
                     html.Div(
                         [
-                            html.Span(className="section-icon", children="🔗"),
-                            html.H2("Vergleich: Aare & Reuss"),
-                        ],
-                        className="section-header",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.Div(className="graph-title", children=[
-                                        html.Span(className="icon", children="🌡️"),
-                                        "Temperatur im Vergleich (7 Tage)",
-                                    ]),
-                                    dcc.Graph(
-                                        id="combined-temp-graph",
-                                        config={"displayModeBar": False, "responsive": True},
-                                        style={"height": "40vh"},
-                                    ),
-                                ],
-                                className="graph-container",
+                            graph_card(
+                                "Temperatur im Vergleich (7 Tage)", "🌡️",
+                                "combined-temp-graph",
                             ),
-                            html.Div(
-                                [
-                                    html.Div(className="graph-title", children=[
-                                        html.Span(className="icon", children="🌊"),
-                                        "Abfluss & Wasserstand im Vergleich (7 Tage)",
-                                    ]),
-                                    dcc.Graph(
-                                        id="combined-flow-graph",
-                                        config={"displayModeBar": False, "responsive": True},
-                                        style={"height": "40vh"},
-                                    ),
-                                ],
-                                className="graph-container",
+                            graph_card(
+                                "Abfluss & Wasserstand im Vergleich (7 Tage)", "🌊",
+                                "combined-flow-graph",
                             ),
                         ],
-                        style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "20px"},
                         className="graph-section",
                     ),
                 ],
                 style={"padding": "0 20px"},
             ),
 
-            # ─── Aare graphs ────────────────────────────────────────────────
+            # ── Aare detail ───────────────────────────────────────────
             html.Div(
                 [
+                    section_header("📈", "Aare"),
                     html.Div(
                         [
-                            html.Span(className="section-icon", children="📈"),
-                            html.H2("Aare"),
+                            graph_card("Temperatur (7 Tage)", "🌡️", "aare-temp-graph"),
+                            graph_card("Abfluss & Wasserstand (7 Tage)", "🌊", "aare-flow-graph"),
                         ],
-                        className="section-header",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.Div(className="graph-title", children=[
-                                        html.Span(className="icon", children="🌡️"),
-                                        "Temperatur (7 Tage)",
-                                    ]),
-                                    dcc.Graph(
-                                        id="aare-temp-graph",
-                                        config={"displayModeBar": False, "responsive": True},
-                                        style={"height": "40vh"},
-                                    ),
-                                ],
-                                className="graph-container",
-                            ),
-                            html.Div(
-                                [
-                                    html.Div(className="graph-title", children=[
-                                        html.Span(className="icon", children="🌊"),
-                                        "Abfluss & Wasserstand (7 Tage)",
-                                    ]),
-                                    dcc.Graph(
-                                        id="aare-flow-graph",
-                                        config={"displayModeBar": False, "responsive": True},
-                                        style={"height": "40vh"},
-                                    ),
-                                ],
-                                className="graph-container",
-                            ),
-                        ],
-                        style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "20px"},
                         className="graph-section",
                     ),
                 ],
                 style={"padding": "0 20px"},
             ),
 
-            # ─── Reuss graphs ───────────────────────────────────────────────
+            # ── Reuss detail ──────────────────────────────────────────
             html.Div(
                 [
+                    section_header("📈", "Reuss"),
                     html.Div(
                         [
-                            html.Span(className="section-icon", children="📈"),
-                            html.H2("Reuss"),
+                            graph_card("Temperatur (7 Tage)", "🌡️", "reuss-temp-graph"),
+                            graph_card("Abfluss & Wasserstand (7 Tage)", "🌊", "reuss-flow-graph"),
                         ],
-                        className="section-header",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.Div(className="graph-title", children=[
-                                        html.Span(className="icon", children="🌡️"),
-                                        "Temperatur (7 Tage)",
-                                    ]),
-                                    dcc.Graph(
-                                        id="reuss-temp-graph",
-                                        config={"displayModeBar": False, "responsive": True},
-                                        style={"height": "40vh"},
-                                    ),
-                                ],
-                                className="graph-container",
-                            ),
-                            html.Div(
-                                [
-                                    html.Div(className="graph-title", children=[
-                                        html.Span(className="icon", children="🌊"),
-                                        "Abfluss & Wasserstand (7 Tage)",
-                                    ]),
-                                    dcc.Graph(
-                                        id="reuss-flow-graph",
-                                        config={"displayModeBar": False, "responsive": True},
-                                        style={"height": "40vh"},
-                                    ),
-                                ],
-                                className="graph-container",
-                            ),
-                        ],
-                        style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "20px"},
                         className="graph-section",
                     ),
                 ],
                 style={"padding": "0 20px"},
             ),
 
+            # ── Refresh timer ─────────────────────────────────────────
             dcc.Interval(
-                id="interval-refresh", interval=10 * 60 * 1000, n_intervals=0
-            ),  # 10 min
+                id="interval-refresh",
+                interval=10 * 60 * 1000,
+                n_intervals=0,
+            ),
 
+            # ── Footer ────────────────────────────────────────────────
             html.Footer(
                 "Made with 💧 for Swiss waters • Daten von hydrodaten.admin.ch",
                 className="footer",

@@ -1,23 +1,20 @@
-"""Fäbu's App – Aare & Reuss Wasser-Monitoring"""
+"""Fäbu's App – Aare & Reuss Wasser-Monitoring."""
 
-import dash
+from dash import Dash
 
-# Create the Dash app first so callbacks can register on it
-app = dash.Dash(__name__, title="Fäbu's App – Aare & Reuss Monitor")
-server = app.server
-
-# Now import components and callbacks (they register on `app` above)
-from components import wave_svg, APP_INDEX_TEMPLATE, build_layout
+from components import build_layout
 from callbacks import update_plots  # noqa: F401 – registers the callback
 
-# Inject custom HTML (CSS is loaded automatically from assets/style.css)
-template = APP_INDEX_TEMPLATE.replace("__DASH_WAVE_SVG__", wave_svg())
-template = template.replace("__DASH_METAS__", "{%metas%}")
-template = template.replace("__DASH_TITLE__", "{%title%}")
-template = template.replace("__DASH_FAVICON__", "{%favicon%}")
-app.index_string = template
+app = Dash(
+    __name__,
+    title="Fäbu's App – Aare & Reuss Monitor",
+    external_stylesheets=[
+        "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+    ],
+)
 
 app.layout = build_layout()
+server = app.server
 
 
 if __name__ == "__main__":

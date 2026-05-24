@@ -1,121 +1,95 @@
-"""Plot building and theming helpers."""
+"""Plot helpers using plotly.graph_objects."""
+
+import plotly.graph_objects as go
+
+RIVER_COLORS = {"Aare": "#3b82f6", "Reuss": "#06b6d4"}
 
 
-COLOR_MAP = {
-    "Aare": "#3b82f6",
-    "Reuss": "#06b6d4",
-}
-
-
-def build_combined_plot(aare_data, reuss_data, aare_label, reuss_label, title_text):
-    """Merge two river datasets into a single combined Plotly figure."""
-    combined = {"data": [], "layout": {"title": {"text": title_text}}}
-
-    # Merge xaxis configs from both sources so spike lines etc. work.
-    aare_layout = aare_data.get("layout", {})
-    reuss_layout = reuss_data.get("layout", {})
-
-    aare_x = aare_layout.get("xaxis", {})
-    reuss_x = reuss_layout.get("xaxis", {})
-    combined["layout"]["xaxis"] = {**reuss_x, **aare_x}
-
-    # Collect all y-values to compute a proper shared range
-    all_y = []
-    for data in [aare_data, reuss_data]:
-        for series in data.get("data", []):
-            if "y" in series:
-                all_y.extend(series["y"])
-
-    # Merge xaxis/yaxis configs from both sources
-    aare_y = aare_layout.get("yaxis", {})
-    reuss_y = reuss_layout.get("yaxis", {})
-    combined["layout"]["yaxis"] = {**reuss_y, **aare_y}
-
-    # Override range to fit ALL data so neither river is squashed
-    if all_y:
-        y_min = min(all_y)
-        y_max = max(all_y)
-        y_range = y_max - y_min
-        padding = y_range * 0.1 if y_range else 1
-        combined["layout"]["yaxis"]["range"] = [y_min - padding, y_max + padding]
-
-    for label, data in [(aare_label, aare_data), (reuss_label, reuss_data)]:
-        for series in data.get("data", []):
-            if "x" not in series or "y" not in series:
-                continue
-            new_series = {
-                "x": series["x"],
-                "y": series["y"],
-                "name": f"{label} – {series.get('name', '')}",
-                "line": {"color": COLOR_MAP.get(label, "#94a3b8"), "width": 2.5},
-                "marker": {"size": 5},
-                "hoverinfo": "x+y+name",
-            }
-            combined["data"].append(new_series)
-
-    return combined
-
-
-def apply_dark_theme(plot, title_text):
-    """Apply a polished dark theme to a Plotly figure."""
-    plot["layout"].update(
-        title={
-            "text": title_text,
-            "font": {"size": 16, "color": "#f1f5f9", "family": "Inter"},
-            "x": 0.5,
-            "xanchor": "center",
-        },
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={"family": "Inter, sans-serif", "color": "#94a3b8", "size": 12},
-        margin={"l": 50, "r": 20, "t": 50, "b": 40},
-        legend={
-            "font": {"size": 11, "color": "#94a3b8"},
-            "bgcolor": "rgba(15,23,42,0.6)",
-            "bordercolor": "rgba(148,163,184,0.15)",
-            "borderwidth": 1,
-            "orientation": "h",
-            "x": 0.5,
-            "xanchor": "center",
-            "y": -0.18,
-            "yanchor": "top",
-        },
-        hoverlabel={
-            "bgcolor": "rgba(15,23,42,0.95)",
-            "bordercolor": "rgba(6,182,212,0.5)",
-            "font": {"size": 13, "color": "#f1f5f9", "family": "Inter"},
-        },
-        hovermode="x unified",
-        hoverdistance=50,
-        spikedistance=-1,
-        xaxis={
-            **plot["layout"].get("xaxis", {}),
-            "gridcolor": "rgba(148,163,184,0.1)",
-            "zerolinecolor": "rgba(148,163,184,0.15)",
-            "tickfont": {"size": 11, "color": "#64748b"},
-            "tickformat": "%d.%m.%Y %H:%M",
-            "spikemode": "across",
-            "spikesnap": "data",
-            "spikedash": "dot",
-            "spikethickness": 1,
-        },
-        yaxis={
-            **plot["layout"].get("yaxis", {}),
-            "gridcolor": "rgba(148,163,184,0.1)",
-            "zerolinecolor": "rgba(148,163,184,0.15)",
-            "tickfont": {"size": 11, "color": "#64748b"},
-            "spikemode": "across",
-            "spikesnap": "data",
-            "spikedash": "dot",
-            "spikethickness": 1,
-        },
+def make_trace(data, label):
+    """Create a Plotly trace from raw data dict."""
+    return go.Scatter(
+        x=data["x"],
+        y=data["y"],
+        name=f"{label} – {data.get('name', '')}",
+        mode="lines",
+        line=dict(color=RIVER_COLORS.get(label, "#94a3b8"), width=2.5),
+        marker=dict(size=5),
+        hovertemplate="%{y:.2f}<br>%{x|%d.%m. %H:%M}<extra>%{fullData.name}</extra>",
+        hoverinfo="skip",
     )
 
-    # Darken line markers
-    for series in plot.get("data", []):
-        if "line" in series:
-            series["line"].update(width=2.5)
-        if "marker" in series:
-            series["marker"].update(size=5)
 
-    return plot
+def build_single_plot(data, label):
+    """Build a Plotly figure from raw plot data."""
+    traces = [make_trace(d, label) for d in data.get("data", [])]
+    fig = go.Figure(data=traces)
+    _apply_theme(fig)
+    return fig
+
+
+def build_combined_plot(data_aare, data_reuss):
+    """Merge two river datasets into a single figure."""
+    traces = []
+    for data, label in [(data_aare, "Aare"), (data_reuss, "Reuss")]:
+        traces.extend(make_trace(d, label) for d in data.get("data", []))
+
+    fig = go.Figure(data=traces)
+
+    # Shared y-range so neither river is squashed
+    all_y = [v for d in [data_aare, data_reuss] for t in d.get("data", []) for v in t.get("y", [])]
+    if all_y:
+        y_min, y_max = min(all_y), max(all_y)
+        span = y_max - y_min
+        fig.update_yaxes(range=[y_min - span * 0.1, y_max + span * 0.1])
+
+    _apply_theme(fig)
+    return fig
+
+
+# ── Dark theme layout config ──────────────────────────────────────────────
+
+_DARK_LAYOUT = dict(
+    title=dict(text="", font=dict(size=16, family="Inter")),
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Inter, sans-serif", color="#94a3b8"),
+    margin=dict(l=50, r=20, t=50, b=40),
+    legend=dict(
+        font=dict(size=11, color="#94a3b8"),
+        bgcolor="rgba(15,23,42,0.6)",
+        bordercolor="rgba(148,163,184,0.15)",
+        borderwidth=1,
+        orientation="h",
+        x=0.5, xanchor="center",
+        y=-0.18, yanchor="top",
+    ),
+    hovermode="x unified",
+    hoverdistance=50,
+    spikedistance=-1,
+    xaxis=dict(
+        gridcolor="rgba(148,163,184,0.1)",
+        zerolinecolor="rgba(148,163,184,0.15)",
+        tickfont=dict(size=11, color="#64748b"),
+        tickformat="%d.%m.%Y %H:%M",
+        spikemode="across", spikesnap="data",
+        spikedash="dot", spikethickness=1,
+    ),
+    yaxis=dict(
+        gridcolor="rgba(148,163,184,0.1)",
+        zerolinecolor="rgba(148,163,184,0.15)",
+        tickfont=dict(size=11, color="#64748b"),
+        spikemode="across", spikesnap="data",
+        spikedash="dot", spikethickness=1,
+    ),
+    hoverlabel=dict(
+        bgcolor="rgba(15,23,42,0.95)",
+        bordercolor="rgba(6,182,212,0.5)",
+        font=dict(size=13, color="#f1f5f9", family="Inter"),
+    ),
+)
+
+
+def _apply_theme(fig):
+    """Apply the dark theme config to a figure."""
+    fig.update_layout(**_DARK_LAYOUT)
+    return fig

@@ -4,163 +4,141 @@ import datetime
 
 from dash import callback, Output, Input
 
-from data import load_plot
-from plots import build_combined_plot, apply_dark_theme
+from data import load_plot_data
+from plots import build_single_plot, build_combined_plot
 
 
-def fmt_time(raw_time):
-    """Format ISO-ish time to readable Swiss format."""
-    if not raw_time:
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+def _fmt_time(raw):
+    """Format ISO-ish time to Swiss format."""
+    if not raw:
         return ""
     try:
-        dt = datetime.datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+        dt = datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
         return dt.strftime("%d.%m. %H:%M")
     except (ValueError, TypeError):
-        return raw_time
+        return raw
 
+
+def _latest_values(raw_data, plot_type):
+    """Extract latest measurement(s) from raw API data."""
+    if not raw_data.get("data"):
+        return None
+
+    if plot_type == "temperature":
+        series = raw_data["data"][0]
+        return {
+            "value": series["y"][-1],
+            "unit": "°C",
+            "time": series["x"][-1],
+        }
+
+    values = {}
+    for series in raw_data["data"]:
+        if not (series.get("x") and series.get("y")):
+            continue
+        name = series.get("name", "")
+        latest = {"value": series["y"][-1], "time": series["x"][-1]}
+        if "Abfluss" in name:
+            values["flow"] = {**latest, "unit": "m³/s"}
+        elif "Wasserstand" in name or "Pegel" in name:
+            values["level"] = {**latest, "unit": "m"}
+
+    return values if values else None
+
+
+# ── Callback ───────────────────────────────────────────────────────────────
 
 @callback(
     [
-        # Graph figures
+        # Graphs
         Output("combined-temp-graph", "figure"),
         Output("combined-flow-graph", "figure"),
         Output("aare-temp-graph", "figure"),
         Output("aare-flow-graph", "figure"),
         Output("reuss-temp-graph", "figure"),
         Output("reuss-flow-graph", "figure"),
-        # Latest measurements for display
+        # Latest values
         Output("aare-temp-value", "children"),
         Output("aare-flow-value", "children"),
         Output("aare-level-value", "children"),
         Output("reuss-temp-value", "children"),
         Output("reuss-flow-value", "children"),
         Output("reuss-level-value", "children"),
-        # Time stamps for measurement cards
+        # Timestamps
         Output("aare-temp-time", "children"),
         Output("aare-flow-time", "children"),
         Output("aare-level-time", "children"),
         Output("reuss-temp-time", "children"),
         Output("reuss-flow-time", "children"),
         Output("reuss-level-time", "children"),
-        # Last updated timestamp
+        # Last updated
         Output("last-updated", "children"),
     ],
     Input("interval-refresh", "n_intervals"),
 )
-def update_plots(n):
-    # Get temperature plots and latest values
-    aare_temp_plot, aare_temp_latest = load_plot(
-        station_id="2135", title="Temperatur", plot_type="temperature"
-    )
-    reuss_temp_plot, reuss_temp_latest = load_plot(
-        station_id="2152", title="Temperatur", plot_type="temperature"
-    )
+def update_plots(_):
+    # ── Fetch & build plots ─────────────────────────────────────
+    aare_temp_raw = load_plot_data("2135", "temperature")
+    aare_flow_raw = load_plot_data("2135", "flow")
+    reuss_temp_raw = load_plot_data("2152", "temperature")
+    reuss_flow_raw = load_plot_data("2152", "flow")
 
-    # Get flow and water level plots and latest values
-    aare_flow_plot, aare_flow_latest = load_plot(
-        station_id="2135", title="Abfluss & Wasserstand", plot_type="flow"
-    )
-    reuss_flow_plot, reuss_flow_latest = load_plot(
-        station_id="2152", title="Abfluss & Wasserstand", plot_type="flow"
-    )
+    # Individual plots
+    aare_temp_fig = build_single_plot(aare_temp_raw, "Aare")
+    reuss_temp_fig = build_single_plot(reuss_temp_raw, "Reuss")
+    aare_flow_fig = build_single_plot(aare_flow_raw, "Aare")
+    reuss_flow_fig = build_single_plot(reuss_flow_raw, "Reuss")
 
-    # Build combined comparison plots
-    combined_temp = build_combined_plot(
-        aare_temp_plot, reuss_temp_plot, "Aare", "Reuss", "Temperatur – Aare & Reuss"
-    )
-    combined_flow = build_combined_plot(
-        aare_flow_plot, reuss_flow_plot, "Aare", "Reuss", "Abfluss & Wasserstand – Aare & Reuss"
-    )
+    # Combined comparison
+    combined_temp = build_combined_plot(aare_temp_raw, reuss_temp_raw)
+    combined_flow = build_combined_plot(aare_flow_raw, reuss_flow_raw)
 
-    # Apply modern dark theme to all plots
-    for plot, title in [
-        (combined_temp, "Temperatur – Aare & Reuss"),
-        (combined_flow, "Abfluss & Wasserstand – Aare & Reuss"),
-        (aare_temp_plot, "Temperatur – Aare"),
-        (aare_flow_plot, "Abfluss & Wasserstand – Aare"),
-        (reuss_temp_plot, "Temperatur – Reuss"),
-        (reuss_flow_plot, "Abfluss & Wasserstand – Reuss"),
-    ]:
-        apply_dark_theme(plot, title)
+    # ── Extract latest values ───────────────────────────────────
+    aare_temp_val = _latest_values(aare_temp_raw, "temperature")
+    aare_flow_val = _latest_values(aare_flow_raw, "flow")
+    reuss_temp_val = _latest_values(reuss_temp_raw, "temperature")
+    reuss_flow_val = _latest_values(reuss_flow_raw, "flow")
 
-    # Format latest measurement values for display
-    # Use the most recent data timestamp as "last updated" (Swiss time)
-    all_times = [
-        aare_temp_latest.get("time"),
-        aare_flow_latest.get("flow", {}).get("time"),
-        aare_flow_latest.get("level", {}).get("time"),
-        reuss_temp_latest.get("time"),
-        reuss_flow_latest.get("flow", {}).get("time"),
-        reuss_flow_latest.get("level", {}).get("time"),
-    ]
-    latest_data_time = max(t for t in all_times if t)
-    current_time = fmt_time(latest_data_time)
+    # ── Format display strings ──────────────────────────────────
+    def _val_str(v):
+        if v is None:
+            return "N/A"
+        if "unit" in v:
+            fmt = ".2f" if v["unit"] == "m" else ".1f"
+            return f'{v["value"]:{fmt}} {v["unit"]}'
+        return str(v)
 
-    # Temperature values
-    aare_temp_display = (
-        f"{aare_temp_latest.get('value', 'N/A'):.1f} {aare_temp_latest.get('unit', '°C')}"
-        if "value" in aare_temp_latest
-        else "N/A"
-    )
-    reuss_temp_display = (
-        f"{reuss_temp_latest.get('value', 'N/A'):.1f} {reuss_temp_latest.get('unit', '°C')}"
-        if "value" in reuss_temp_latest
-        else "N/A"
-    )
+    def _time_str(v):
+        return _fmt_time(v["time"]) if v else "–"
 
-    # Flow values
-    aare_flow_display = (
-        f"{aare_flow_latest.get('flow', {}).get('value', 'N/A'):.1f} {aare_flow_latest.get('flow', {}).get('unit', 'm³/s')}"
-        if "flow" in aare_flow_latest
-        else "N/A"
-    )
-    reuss_flow_display = (
-        f"{reuss_flow_latest.get('flow', {}).get('value', 'N/A'):.1f} {reuss_flow_latest.get('flow', {}).get('unit', 'm³/s')}"
-        if "flow" in reuss_flow_latest
-        else "N/A"
-    )
+    # ── Find the most recent data timestamp ─────────────────────
+    all_times = [v["time"] for v in [aare_temp_val, reuss_temp_val] if v] + \
+                [v["flow"]["time"] for v in [aare_flow_val, reuss_flow_val] if v and "flow" in v] + \
+                [v["level"]["time"] for v in [aare_flow_val, reuss_flow_val] if v and "level" in v]
+    latest_time = max(all_times) if all_times else None
+    last_updated = f"Letzte Aktualisierung: {_fmt_time(latest_time)}" if latest_time else ""
 
-    # Water level values
-    aare_level_display = (
-        f"{aare_flow_latest.get('level', {}).get('value', 'N/A'):.2f} {aare_flow_latest.get('level', {}).get('unit', 'm')}"
-        if "level" in aare_flow_latest
-        else "N/A"
-    )
-    reuss_level_display = (
-        f"{reuss_flow_latest.get('level', {}).get('value', 'N/A'):.2f} {reuss_flow_latest.get('level', {}).get('unit', 'm')}"
-        if "level" in reuss_flow_latest
-        else "N/A"
-    )
-
-    # Last updated message
-    last_updated = f"Letzte Aktualisierung: {current_time}"
-
-    # Time stamps for cards
-    aare_temp_time = fmt_time(aare_temp_latest.get("time"))
-    aare_flow_time = fmt_time(aare_flow_latest.get("flow", {}).get("time"))
-    aare_level_time = fmt_time(aare_flow_latest.get("level", {}).get("time"))
-    reuss_temp_time = fmt_time(reuss_temp_latest.get("time"))
-    reuss_flow_time = fmt_time(reuss_flow_latest.get("flow", {}).get("time"))
-    reuss_level_time = fmt_time(reuss_flow_latest.get("level", {}).get("time"))
-
+    # ── Return everything ───────────────────────────────────────
     return (
-        combined_temp,
-        combined_flow,
-        aare_temp_plot,
-        aare_flow_plot,
-        reuss_temp_plot,
-        reuss_flow_plot,
-        aare_temp_display,
-        aare_flow_display,
-        aare_level_display,
-        reuss_temp_display,
-        reuss_flow_display,
-        reuss_level_display,
-        aare_temp_time,
-        aare_flow_time,
-        aare_level_time,
-        reuss_temp_time,
-        reuss_flow_time,
-        reuss_level_time,
+        # Graphs
+        combined_temp, combined_flow,
+        aare_temp_fig, aare_flow_fig, reuss_temp_fig, reuss_flow_fig,
+        # Values
+        _val_str(aare_temp_val),
+        _val_str(aare_flow_val.get("flow") if aare_flow_val else None),
+        _val_str(aare_flow_val.get("level") if aare_flow_val else None),
+        _val_str(reuss_temp_val),
+        _val_str(reuss_flow_val.get("flow") if reuss_flow_val else None),
+        _val_str(reuss_flow_val.get("level") if reuss_flow_val else None),
+        # Timestamps
+        _time_str(aare_temp_val),
+        _time_str(aare_flow_val.get("flow") if aare_flow_val else None),
+        _time_str(aare_flow_val.get("level") if aare_flow_val else None),
+        _time_str(reuss_temp_val),
+        _time_str(reuss_flow_val.get("flow") if reuss_flow_val else None),
+        _time_str(reuss_flow_val.get("level") if reuss_flow_val else None),
+        # Last updated
         last_updated,
     )
