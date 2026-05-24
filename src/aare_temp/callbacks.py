@@ -4,8 +4,8 @@ import datetime
 
 from dash import callback, Output, Input
 
-from data import load_plot_data
-from plots import build_single_plot, build_combined_plot, build_filtered_single_plot, build_filtered_combined_plot
+from aare_temp.data import load_plot_data
+from aare_temp.plots import build_single_plot, build_combined_plot, build_filtered_single_plot, build_filtered_combined_plot
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────

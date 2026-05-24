@@ -2,8 +2,8 @@
 
 from dash import Dash
 
-from components import build_layout
-from callbacks import update_plots  # noqa: F401 – registers the callback
+from aare_temp.components import build_layout
+from aare_temp.callbacks import update_plots  # noqa: F401 – registers the callback
 
 app = Dash(
     __name__,
@@ -17,5 +17,5 @@ app.layout = build_layout()
 server = app.server
 
 
-if __name__ == "__main__":
+def main():
     app.run(host="0.0.0.0")
