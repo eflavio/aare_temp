@@ -33,9 +33,8 @@ def measurement_card(prefix):
             f"{prefix}-{time_id}",
         ))
     return html.Div(
-        [html.Div(row, style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "14px"})
-         for row in rows],
-        className="cards-row",
+        rows,
+        className="cards-column",
     )
 
 
